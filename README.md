@@ -1,42 +1,73 @@
 # 📈 TradeScope
 
-**AI-powered market analysis dashboard with live TradingView charts and projected price paths.**
+**AI-powered market analysis platform: a deterministic technical-analysis engine combined with LLM interpretation (Claude or GPT), with projected price paths drawn on live charts.**
 
-TradeScope continuously produces technical analyses of crypto (and, secondarily, stocks and forex) using a Large Language Model, and overlays the projected future price path directly on a live chart. It runs on standard shared hosting, with no persistent processes required.
+TradeScope continuously analyzes crypto, stocks, indices and forex. The server computes the technical picture itself — indicators, market structure, Smart Money Concepts, derivatives data — and the AI turns it into scenarios, a projected price path with a confidence band and a complete trade plan. It runs on standard shared hosting (PHP + SQLite), with no Node or long-running processes.
+
+![PHP](https://img.shields.io/badge/PHP%208.1+-777BB4?style=flat-square&logo=php&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite%20%2F%20MySQL-003B57?style=flat-square&logo=sqlite&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat-square&logo=javascript&logoColor=black)
+![TradingView](https://img.shields.io/badge/TradingView%20Lightweight%20Charts-131722?style=flat-square&logo=tradingview&logoColor=white)
+![Claude API](https://img.shields.io/badge/Claude%20API-D97757?style=flat-square&logo=anthropic&logoColor=white)
+![OpenAI](https://img.shields.io/badge/OpenAI%20API-412991?style=flat-square&logo=openai&logoColor=white)
 
 ---
 
 ## ✨ Features
 
-- 🤖 **AI analysis engine** — periodic analyses generated through the **Anthropic Claude API**, with **OpenAI** available as an alternative provider
-- 🧭 **Confluence engine** — combines multiple signals, including **Smart Money Concepts (SMC)**, into a single scored view
-- 📊 **Live charts** — embedded **TradingView** charts with the projected price path drawn on top
-- 🪙 **Crypto-first** — focus on crypto markets, with support for stocks and forex
-- 🔒 **Private access** — protected login, single-owner dashboard
-- ☁️ **Shared-hosting friendly** — PHP + MySQL with scheduled jobs, deployable on plans without Node or long-running processes
+| Area | What it does |
+|---|---|
+| 🧮 **Confluence score** | Deterministic score from −100 to +100 built from ~20 independent contributions (HTF trend, structure, moving averages, ADX/DI, momentum, volume, VWAP/POC, divergences, SMC, derivatives, MTF consensus). It caps the confidence the AI is allowed to declare |
+| 🕰️ **Multi-timeframe consensus** | Four timeframes (timing, operational, higher, macro) read and voted separately |
+| 🏦 **Smart Money Concepts** | BOS/CHoCH, order blocks (mitigated / unmitigated), open fair value gaps, liquidity sweeps, equal highs/lows — computed by the server, not "imagined" by the model |
+| 🌡️ **Market regime & Wyckoff** | Trend / range / compression / expansion classification; Wyckoff phases with spring and upthrust detection |
+| 📊 **Volume & anchored levels** | Volume profile (POC, value area, HVN/LVN, naked POC), previous day/week/month levels, weekly VWAP |
+| 🪙 **Crypto derivatives** | Funding rate, open interest, long/short ratios, taker flow, perp-spot basis, Fear & Greed, BTC dominance and correlation |
+| 🔮 **Empirical projection** | Confidence band built from the instrument's real return distribution (10/25/50/75/90 quantiles), shaped by the AI scenario |
+| 🎯 **Self-calibration** | Past analyses are verified automatically (target / stop / expired); win rate per confidence bucket is fed back into the prompt |
+| ✅ **Strict trade-plan validation** | Stops inside noise widened, R/R recomputed server-side, expected value in R, final verdict (execute / reduced size / wait) |
+| 🌲 **Pine Script export** | One click generates a Pine v5 indicator that draws path, band, entry, stop, targets and SMC zones inside TradingView |
+| 🤖 **Two AI providers** | Anthropic Claude and OpenAI GPT, interchangeable; manual analyses with any configured model |
+| 🔒 **Private & automated** | Login-protected single-owner dashboard; cron-driven analyses keep everything up to date |
 
 ## 🏗️ Architecture
 
 ```
- Scheduled job ──▶ Market data ──▶ Confluence / SMC engine ──▶ LLM (Claude / OpenAI)
-                                                                     │
-                                         MySQL (analyses, history) ◀─┘
-                                                   │
-                              Pro dashboard (login) + TradingView chart overlay
+ cron.php ──▶ Market data providers ──▶ Indicator / SMC / confluence engine (inc/)
+                                                       │
+                                     Prompt + history ─┴─▶ LLM (Claude / OpenAI)
+                                                                 │
+                         SQLite / MySQL (analyses, outcomes) ◀───┘
+                                       │
+              Pro dashboard (pro.php) · History · Pine Script export · TradingView charts
 ```
 
-## 🛠️ Tech stack
+```
+tradescope/
+├── pro.php / index.php     Dashboards (2.x "pro" and classic)
+├── history.php             Analysis history with automatic outcome verification
+├── settings.php            AI provider, API keys, models, engine parameters, diagnostics
+├── cron.php                Scheduled analyses
+├── api.php                 Internal JSON API
+├── install.php             Guided installer (delete after setup)
+├── inc/                    Engine: DB, auth, data providers, indicators, SMC, derivatives, AI clients, Pine export
+├── assets/                 UI + TradingView Lightweight Charts
+└── storage/                SQLite database, cache, logs (protected)
+```
 
-![PHP](https://img.shields.io/badge/PHP-777BB4?style=flat-square&logo=php&logoColor=white)
-![MySQL](https://img.shields.io/badge/MySQL-4479A1?style=flat-square&logo=mysql&logoColor=white)
-![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat-square&logo=javascript&logoColor=black)
-![TradingView](https://img.shields.io/badge/TradingView-131722?style=flat-square&logo=tradingview&logoColor=white)
-![Claude API](https://img.shields.io/badge/Claude%20API-D97757?style=flat-square&logo=anthropic&logoColor=white)
-![OpenAI](https://img.shields.io/badge/OpenAI-412991?style=flat-square&logo=openai&logoColor=white)
+## 🚀 Installation (shared hosting)
+
+1. Upload the project to `public_html/tradescope` and select **PHP 8.1+** (extensions `pdo_sqlite`, `curl`, `mbstring`, `json`).
+2. Open `https://your-domain/tradescope/install.php`, create the admin user and choose the database (SQLite recommended).
+3. **Delete `install.php`.**
+4. Add your Anthropic and/or OpenAI API key in **Settings**.
+5. Create a cron job every 15–60 minutes: `php /path/to/tradescope/cron.php`.
+
+Full guide (Italian): [LEGGIMI.md](LEGGIMI.md). Configuration template: `inc/config.sample.php` — the real `inc/config.php` is generated by the installer and never committed.
 
 ## 🗺️ Status
 
-Current version: **2.x** — confluence/SMC engine and redesigned "pro" interface.
+Current version: **2.1** — two interchangeable AI providers (Claude / GPT) on top of the 2.0 confluence engine.
 
 ## ⚠️ Disclaimer
 
@@ -45,3 +76,4 @@ TradeScope is a personal analysis tool and does not constitute financial advice.
 ## 📄 License
 
 © Federico Murgese — All rights reserved.
+Includes [TradingView Lightweight Charts™](https://github.com/tradingview/lightweight-charts) (Apache License 2.0).
