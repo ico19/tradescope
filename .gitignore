@@ -1,0 +1,9 @@
+# Secrets and runtime data — never commit
+inc/config.php
+storage/*.sqlite
+storage/*.sqlite-*
+storage/cache/*
+storage/logs/*
+!storage/cache/.gitkeep
+!storage/logs/.gitkeep
+.env
